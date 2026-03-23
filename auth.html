@@ -1,0 +1,325 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="theme-color" content="#22c55e">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<title>Calldid — Sign Up</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --green: #22c55e; --green-dark: #16a34a;
+    --bg: #0f0f0f; --surface: #1a1a1a; --surface2: #242424; --surface3: #2e2e2e;
+    --border: rgba(255,255,255,0.08); --text: #f5f5f5; --muted: #888;
+    --gold: #f59e0b; --red: #ef4444;
+    --radius: 14px; --radius-sm: 8px;
+    --safe-top: env(safe-area-inset-top, 0px);
+    --safe-bottom: env(safe-area-inset-bottom, 0px);
+  }
+  html, body { height: 100%; overflow: hidden; }
+  body {
+    font-family: 'DM Sans', sans-serif;
+    background: var(--bg); color: var(--text);
+    display: flex; justify-content: center; align-items: flex-start;
+  }
+  .app {
+    width: 100%; max-width: 430px; height: 100dvh;
+    background: var(--bg); display: flex; flex-direction: column;
+    overflow-y: auto; -webkit-overflow-scrolling: touch;
+    padding: calc(var(--safe-top) + 40px) 24px calc(var(--safe-bottom) + 40px);
+  }
+
+  .logo {
+    font-size: 32px; font-weight: 700; color: var(--text);
+    letter-spacing: -1px; margin-bottom: 6px;
+  }
+  .logo span { color: var(--green); }
+  .tagline { font-size: 14px; color: var(--muted); margin-bottom: 40px; }
+
+  .tabs {
+    display: flex; background: var(--surface2);
+    border-radius: 12px; padding: 4px; margin-bottom: 28px;
+  }
+  .tab {
+    flex: 1; padding: 10px; border-radius: 9px; border: none;
+    font-family: 'DM Sans', sans-serif; font-size: 14px; font-weight: 600;
+    cursor: pointer; transition: all 0.2s; background: none; color: var(--muted);
+  }
+  .tab.active { background: var(--surface); color: var(--text); }
+
+  .form-group { margin-bottom: 16px; }
+  .form-label { font-size: 12px; color: var(--muted); margin-bottom: 6px; display: block; font-weight: 500; }
+  .form-input {
+    width: 100%; padding: 14px 16px;
+    background: var(--surface2); border: 1px solid var(--border);
+    border-radius: var(--radius-sm); color: var(--text);
+    font-family: 'DM Sans', sans-serif; font-size: 15px; outline: none;
+    transition: border-color 0.2s;
+  }
+  .form-input:focus { border-color: var(--green); }
+  .form-input::placeholder { color: var(--muted); }
+
+  .location-row {
+    display: flex; gap: 10px;
+  }
+  .location-row .form-input { flex: 1; }
+  .detect-btn {
+    padding: 14px; background: var(--surface3); border: 1px solid var(--border);
+    border-radius: var(--radius-sm); color: var(--green); cursor: pointer;
+    font-size: 18px; flex-shrink: 0; transition: background 0.2s;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .detect-btn:hover { background: var(--surface2); }
+
+  .plan-select { margin-bottom: 24px; }
+  .plan-label { font-size: 12px; color: var(--muted); margin-bottom: 10px; display: block; font-weight: 500; }
+  .plans { display: flex; gap: 10px; }
+  .plan-card {
+    flex: 1; padding: 14px; border-radius: var(--radius);
+    border: 1.5px solid var(--border); cursor: pointer;
+    transition: all 0.2s; background: var(--surface2);
+  }
+  .plan-card.selected { border-color: var(--green); background: rgba(34,197,94,0.05); }
+  .plan-card.premium.selected { border-color: var(--gold); background: rgba(245,158,11,0.05); }
+  .plan-name { font-size: 14px; font-weight: 700; margin-bottom: 4px; }
+  .plan-price { font-size: 20px; font-weight: 700; margin-bottom: 6px; }
+  .plan-price span { font-size: 12px; font-weight: 400; color: var(--muted); }
+  .plan-features { font-size: 11px; color: var(--muted); line-height: 1.8; }
+  .plan-badge {
+    display: inline-block; font-size: 10px; font-weight: 700;
+    padding: 2px 8px; border-radius: 100px; margin-bottom: 6px;
+  }
+  .badge-free { background: rgba(34,197,94,0.15); color: var(--green); }
+  .badge-pro { background: rgba(245,158,11,0.15); color: var(--gold); }
+
+  .submit-btn {
+    width: 100%; padding: 16px; background: var(--green);
+    color: #000; border: none; border-radius: var(--radius);
+    font-family: 'DM Sans', sans-serif; font-size: 16px; font-weight: 700;
+    cursor: pointer; transition: background 0.2s; margin-bottom: 16px;
+  }
+  .submit-btn:hover { background: var(--green-dark); }
+  .submit-btn:disabled { background: var(--surface3); color: var(--muted); cursor: default; }
+
+  .error-msg {
+    background: rgba(239,68,68,0.1); border: 1px solid rgba(239,68,68,0.3);
+    border-radius: var(--radius-sm); padding: 12px 14px;
+    font-size: 13px; color: var(--red); margin-bottom: 16px; display: none;
+  }
+
+  .divider {
+    display: flex; align-items: center; gap: 12px; margin: 16px 0;
+    font-size: 12px; color: var(--muted);
+  }
+  .divider::before, .divider::after {
+    content: ''; flex: 1; height: 1px; background: var(--border);
+  }
+
+  .google-btn {
+    width: 100%; padding: 14px; background: var(--surface2);
+    color: var(--text); border: 1px solid var(--border); border-radius: var(--radius);
+    font-family: 'DM Sans', sans-serif; font-size: 15px; font-weight: 500;
+    cursor: pointer; transition: all 0.2s;
+    display: flex; align-items: center; justify-content: center; gap: 10px;
+  }
+  .google-btn:hover { background: var(--surface3); }
+
+  .terms {
+    font-size: 11px; color: var(--muted); text-align: center; margin-top: 16px; line-height: 1.6;
+  }
+  .terms a { color: var(--green); text-decoration: none; }
+</style>
+</head>
+<body>
+<div class="app">
+  <div class="logo">Call<span>did</span></div>
+  <div class="tagline">Find. Call. Track. Local businesses made easy.</div>
+
+  <div class="tabs">
+    <button class="tab active" id="tab-signup" onclick="switchAuthTab('signup')">Sign Up</button>
+    <button class="tab" id="tab-login" onclick="switchAuthTab('login')">Log In</button>
+  </div>
+
+  <div id="errorMsg" class="error-msg"></div>
+
+  <!-- SIGN UP FORM -->
+  <div id="signupForm">
+    <div class="form-group">
+      <label class="form-label">Full Name</label>
+      <input class="form-input" id="su-name" type="text" placeholder="John Smith" />
+    </div>
+    <div class="form-group">
+      <label class="form-label">Email</label>
+      <input class="form-input" id="su-email" type="email" placeholder="you@email.com" />
+    </div>
+    <div class="form-group">
+      <label class="form-label">Password</label>
+      <input class="form-input" id="su-password" type="password" placeholder="Min. 6 characters" />
+    </div>
+    <div class="form-group">
+      <label class="form-label">Your City or Zip Code</label>
+      <div class="location-row">
+        <input class="form-input" id="su-location" type="text" placeholder="e.g. Kansas City, MO or 64101" />
+        <button class="detect-btn" onclick="detectLocation('su-location')" title="Detect my location">📍</button>
+      </div>
+    </div>
+
+    <div class="plan-select">
+      <label class="plan-label">Choose Your Plan</label>
+      <div class="plans">
+        <div class="plan-card selected" id="plan-basic" onclick="selectPlan('basic')">
+          <span class="plan-badge badge-free">FREE</span>
+          <div class="plan-name">Basic</div>
+          <div class="plan-price">$0<span>/mo</span></div>
+          <div class="plan-features">✓ 2 lists<br>✓ Search & call<br>✓ Notes & tracking</div>
+        </div>
+        <div class="plan-card premium" id="plan-premium" onclick="selectPlan('premium')">
+          <span class="plan-badge badge-pro">PRO</span>
+          <div class="plan-name">Premium</div>
+          <div class="plan-price">$4.99<span>/mo</span></div>
+          <div class="plan-features">✓ Unlimited lists<br>✓ Share & export<br>✓ Priority support</div>
+        </div>
+      </div>
+    </div>
+
+    <button class="submit-btn" onclick="handleSignup()">Create Account</button>
+
+    <div class="divider">or</div>
+    <button class="google-btn" onclick="handleGoogle()">
+      <svg width="18" height="18" viewBox="0 0 24 24"><path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/><path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/><path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/><path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/></svg>
+      Continue with Google
+    </button>
+    <div class="terms">By signing up you agree to our <a href="#">Terms</a> and <a href="#">Privacy Policy</a></div>
+  </div>
+
+  <!-- LOGIN FORM -->
+  <div id="loginForm" style="display:none">
+    <div class="form-group">
+      <label class="form-label">Email</label>
+      <input class="form-input" id="li-email" type="email" placeholder="you@email.com" />
+    </div>
+    <div class="form-group">
+      <label class="form-label">Password</label>
+      <input class="form-input" id="li-password" type="password" placeholder="Your password" />
+    </div>
+    <div style="text-align:right;margin-bottom:20px;">
+      <a href="#" style="font-size:13px;color:var(--green);text-decoration:none;">Forgot password?</a>
+    </div>
+    <button class="submit-btn" onclick="handleLogin()">Log In</button>
+    <div class="divider">or</div>
+    <button class="google-btn" onclick="handleGoogle()">
+      <svg width="18" height="18" viewBox="0 0 24 24"><path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/><path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/><path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/><path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/></svg>
+      Continue with Google
+    </button>
+  </div>
+</div>
+
+<script>
+let selectedPlan = 'basic';
+
+function switchAuthTab(tab) {
+  document.getElementById('tab-signup').classList.toggle('active', tab === 'signup');
+  document.getElementById('tab-login').classList.toggle('active', tab === 'login');
+  document.getElementById('signupForm').style.display = tab === 'signup' ? 'block' : 'none';
+  document.getElementById('loginForm').style.display = tab === 'login' ? 'block' : 'none';
+  hideError();
+}
+
+function selectPlan(plan) {
+  selectedPlan = plan;
+  document.getElementById('plan-basic').classList.toggle('selected', plan === 'basic');
+  document.getElementById('plan-premium').classList.toggle('selected', plan === 'premium');
+}
+
+function showError(msg) {
+  const el = document.getElementById('errorMsg');
+  el.textContent = msg; el.style.display = 'block';
+}
+
+function hideError() {
+  document.getElementById('errorMsg').style.display = 'none';
+}
+
+function detectLocation(inputId) {
+  if (!navigator.geolocation) { showError('Geolocation not supported on this device.'); return; }
+  navigator.geolocation.getCurrentPosition(async pos => {
+    try {
+      const { latitude: lat, longitude: lon } = pos.coords;
+      const res = await fetch(`https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lon}&format=json`);
+      const data = await res.json();
+      const city = data.address.city || data.address.town || data.address.village || '';
+      const state = data.address.state_code || data.address.state || '';
+      const zip = data.address.postcode || '';
+      document.getElementById(inputId).value = city ? `${city}, ${state}` : zip;
+    } catch(e) {
+      document.getElementById(inputId).value = `${pos.coords.latitude.toFixed(4)}, ${pos.coords.longitude.toFixed(4)}`;
+    }
+  }, () => showError('Could not detect location. Please enter manually.'));
+}
+
+function handleSignup() {
+  hideError();
+  const name = document.getElementById('su-name').value.trim();
+  const email = document.getElementById('su-email').value.trim();
+  const password = document.getElementById('su-password').value;
+  const location = document.getElementById('su-location').value.trim();
+
+  if (!name) return showError('Please enter your name.');
+  if (!email || !email.includes('@')) return showError('Please enter a valid email.');
+  if (password.length < 6) return showError('Password must be at least 6 characters.');
+  if (!location) return showError('Please enter your city or zip code.');
+
+  const user = { name, email, location, plan: selectedPlan, joined: new Date().toLocaleDateString() };
+  localStorage.setItem('calldid_user', JSON.stringify(user));
+  window.location.href = 'index.html';
+}
+
+function handleLogin() {
+  hideError();
+  const email = document.getElementById('li-email').value.trim();
+  const password = document.getElementById('li-password').value;
+
+  if (!email || !email.includes('@')) return showError('Please enter a valid email.');
+  if (!password) return showError('Please enter your password.');
+
+  const saved = localStorage.getItem('calldid_user');
+  if (saved) {
+    const user = JSON.parse(saved);
+    if (user.email === email) {
+      window.location.href = 'index.html';
+    } else {
+      showError('No account found with that email. Please sign up.');
+    }
+  } else {
+    showError('No account found. Please sign up first.');
+  }
+}
+
+function handleGoogle() {
+  const user = {
+    name: 'Google User', email: 'user@gmail.com',
+    location: 'Kansas City, MO', plan: 'basic',
+    joined: new Date().toLocaleDateString(), avatar: 'G'
+  };
+  localStorage.setItem('calldid_user', JSON.stringify(user));
+  window.location.href = 'index.html';
+}
+
+// If already logged in, skip to app
+if (localStorage.getItem('calldid_user')) {
+  window.location.href = 'index.html';
+}
+
+// Enter key support
+document.addEventListener('keydown', e => {
+  if (e.key === 'Enter') {
+    const isSignup = document.getElementById('signupForm').style.display !== 'none';
+    isSignup ? handleSignup() : handleLogin();
+  }
+});
+</script>
+</body>
+</html>
