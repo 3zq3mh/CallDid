@@ -393,18 +393,27 @@ async function doSearch(){
   btn.disabled=false; btn.textContent='Search';
 }
 
-function showSearchHistory(){
-  const history = STATE.searchHistory;
-  if(!history.length) return;
+showSearchHistory() {
+  const history = STATE?.searchHistory || [];
+  if (!history.length) return;
+
   const dd = document.getElementById('searchHistoryDropdown');
-  dd.innerHTML = history.map(q=>`
-    <div onclick="document.getElementById('searchInput').value='${escHtml(q)}';doSearch();"
+  if (!dd) return;
+
+  dd.innerHTML = history.map(q => `
+    <div onclick="document.getElementById('searchInput').value=${JSON.stringify(q)};doSearch();"
       style="padding:10px 14px;font-size:13px;cursor:pointer;display:flex;align-items:center;gap:8px;border-bottom:1px solid var(--border);color:var(--muted);"
-      onmouseover="this.style.background='var(--surface2)'" onmouseout="this.style.background=''">
-      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+      onmouseover="this.style.background='var(--surface2)'"
+      onmouseout="this.style.background=''">
+      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <circle cx="12" cy="12" r="10"/>
+        <polyline points="12 6 12 12 16 14"/>
+      </svg>
       ${escHtml(q)}
-    </div>`).join('');
-  dd.style.display='block';
+    </div>
+  `).join('');
+
+  dd.style.display = 'block';
 }
 
 function hideSearchHistory(){
