@@ -232,56 +232,84 @@
 </div>
 
 <!-- Note Modal -->
-<div id="noteModal" class="modal-overlay" style="display:none" onclick="if(event.target===this)this.style.display='none'">
+<div id="noteModal" class="modal-overlay" style="display:none"
+  onclick="if(arguments[0].target===this)this.style.display='none'">
+  
   <div class="modal" onclick="event.stopPropagation()">
     <div class="modal-handle"></div>
     <div class="modal-title" id="noteModalTitle">Add Note</div>
     <div class="modal-sub">Was the item available?</div>
+
     <div class="avail-btns">
       <button class="avail-btn" id="avail-yes" onclick="selectAvail('yes')">✓ Yes</button>
       <button class="avail-btn" id="avail-no" onclick="selectAvail('no')">✗ No</button>
     </div>
+
     <div class="modal-price-row">
-      <input id="priceInput" type="text" placeholder="Price (e.g. $12.99)" />
-      <input id="qtyInput" type="text" placeholder="Quantity" />
+      <input id="priceInput" type="number" step="0.01" placeholder="Price (e.g. $12.99)" />
+      <input id="qtyInput" type="number" placeholder="Quantity" />
     </div>
+
     <textarea id="noteText" placeholder="Add a note about this business..."></textarea>
+
     <button class="save-btn" onclick="saveNote()">Save Note</button>
   </div>
 </div>
 
 <!-- List Modal -->
-<div id="listModal" class="modal-overlay" style="display:none" onclick="if(event.target===this)this.style.display='none'">
-  <div class="modal" onclick="event.stopPropagation()">
+<div id="listModal" class="modal-overlay" style="display:none"
+  onclick="if(arguments[0].target===this)this.style.display='none'">
+
+  <div class="modal" onclick="arguments[0].stopPropagation()">
     <div class="modal-handle"></div>
     <div class="modal-title">Add to List</div>
     <div class="modal-sub">Choose a list (2 free with basic plan)</div>
+
     <div id="listOptions"></div>
-    <button class="save-btn" onclick="confirmAddToList()">Done</button>
+
+    <button class="save-btn" onclick="confirmAddToList(); document.getElementById('listModal').style.display='none';">
+      Done
+    </button>
   </div>
 </div>
 
 <!-- Location Modal -->
-<div id="locationModal" class="modal-overlay" style="display:none" onclick="if(event.target===this)this.style.display='none'">
-  <div class="modal" onclick="event.stopPropagation()">
+<div id="locationModal" class="modal-overlay" style="display:none"
+  onclick="if(arguments[0].target===this)this.style.display='none'">
+
+  <div class="modal" onclick="arguments[0].stopPropagation()">
     <div class="modal-handle"></div>
     <div class="modal-title">Change Location</div>
     <div class="modal-sub">Enter a city name or zip code</div>
-    <input class="modal-input" id="locationInput" type="text" placeholder="e.g. Chicago, IL or 90210" />
-    <button class="secondary-btn" style="margin-top:0;" onclick="detectGPS()">📍 Detect My Location</button>
-    <button class="save-btn" onclick="saveLocation()">Set Location</button>
+
+    <input class="modal-input" id="locationInput" type="text"
+      placeholder="e.g. Chicago, IL or 90210" />
+
+    <button class="secondary-btn" style="margin-top:0;"
+      onclick="detectGPS()">📍 Detect My Location</button>
+
+    <button class="save-btn"
+      onclick="saveLocation(); document.getElementById('locationModal').style.display='none';">
+      Set Location
+    </button>
   </div>
 </div>
 
 <!-- Edit Profile Modal -->
-<div id="editProfileModal" class="modal-overlay" style="display:none" onclick="if(event.target===this)this.style.display='none'">
-  <div class="modal" onclick="event.stopPropagation()">
+<div id="editProfileModal" class="modal-overlay" style="display:none"
+  onclick="if(arguments[0].target===this)this.style.display='none'">
+
+  <div class="modal" onclick="arguments[0].stopPropagation()">
     <div class="modal-handle"></div>
     <div class="modal-title">Edit Profile</div>
     <div class="modal-sub">Update your account details</div>
-    <input class="modal-input" id="edit-name" type="text" placeholder="Full Name" />
-    <input class="modal-input" id="edit-email" type="email" placeholder="Email" />
-    <button class="save-btn" onclick="saveProfile()">Save Changes</button>
+
+    <form onsubmit="saveProfile(); document.getElementById('editProfileModal').style.display='none'; return false;">
+      <input class="modal-input" id="edit-name" type="text" placeholder="Full Name" />
+      <input class="modal-input" id="edit-email" type="email" placeholder="Email" />
+
+      <button class="save-btn" type="submit">Save Changes</button>
+    </form>
   </div>
 </div>
 
@@ -370,30 +398,56 @@ function switchTab(tab){
   }
 }
 
+/* =========================
+   SEARCH
+========================= */
+
 async function doSearch(){
-  const q=document.getElementById('searchInput').value.trim();
-  if(!q) return;
-  if(!navigator.onLine){document.getElementById('resultsArea').innerHTML=`<div class="empty"><div class="empty-icon">📡</div><div class="empty-title">You're offline</div><div class="empty-sub">Connect to search.</div></div>`;return;}
-  STATE.searchQuery=q;
-  // Save to search history
-  STATE.searchHistory=STATE.searchHistory.filter(s=>s!==q);
+  const input = document.getElementById('searchInput');
+  if (!input) return;
+
+  const q = input.value.trim();
+  if (!q) return;
+
+  if(!navigator.onLine){
+    document.getElementById('resultsArea').innerHTML =
+      `<div class="empty"><div class="empty-icon">📡</div><div class="empty-title">You're offline</div><div class="empty-sub">Connect to search.</div></div>`;
+    return;
+  }
+
+  STATE.searchQuery = q;
+
+  STATE.searchHistory = (STATE.searchHistory || []).filter(s => s !== q);
   STATE.searchHistory.unshift(q);
-  if(STATE.searchHistory.length>10) STATE.searchHistory.pop();
+  if (STATE.searchHistory.length > 10) STATE.searchHistory.pop();
   localStorage.setItem('calldid_history', JSON.stringify(STATE.searchHistory));
+
   hideSearchHistory();
-  const btn=document.getElementById('searchBtn');
-  btn.disabled=true; btn.textContent='...';
-  document.getElementById('resultsArea').innerHTML=`<div class="loading-wrap"><div class="spinner"></div><div class="loading-text">Finding businesses near ${STATE.location}...</div></div>`;
+
+  const btn = document.getElementById('searchBtn');
+  if (btn) {
+    btn.disabled = true;
+    btn.textContent = '...';
+  }
+
+  document.getElementById('resultsArea').innerHTML =
+    `<div class="loading-wrap"><div class="spinner"></div><div class="loading-text">Finding businesses near ${STATE.location}...</div></div>`;
+
   try {
     await searchWithGoogle(q);
   } catch(e) {
     console.error(e);
-    document.getElementById('resultsArea').innerHTML=`<div class="empty"><div class="empty-icon">⚠️</div><div class="empty-title">Search failed</div><div class="empty-sub">${e.message||'Please try again.'}</div></div>`;
+    document.getElementById('resultsArea').innerHTML =
+      `<div class="empty"><div class="empty-icon">⚠️</div><div class="empty-title">Search failed</div><div class="empty-sub">${e.message || 'Please try again.'}</div></div>`;
   }
-  btn.disabled=false; btn.textContent='Search';
+
+  if (btn) {
+    btn.disabled = false;
+    btn.textContent = 'Search';
+  }
 }
 
-showSearchHistory() {
+function showSearchHistory() {
   const history = STATE?.searchHistory || [];
   if (!history.length) return;
 
@@ -417,403 +471,110 @@ showSearchHistory() {
 }
 
 function hideSearchHistory(){
-  document.getElementById('searchHistoryDropdown').style.display='none';
+  const el = document.getElementById('searchHistoryDropdown');
+  if (el) el.style.display='none';
 }
 
-async function searchWithGoogle(q, apiKey) {
-  const WORKER = 'https://calldid-places.zeesdev.workers.dev';
-  const searchText = encodeURIComponent(`${q} near ${STATE.location}`);
-  const radiusMeters = Math.round((STATE.radius || 10) * 1609.34);
-  const res = await fetch(`${WORKER}?query=${searchText}&type=search&radius=${radiusMeters}`);
-  if (!res.ok) throw new Error('Search request failed.');
-  const data = await res.json();
-  if (data.status === 'REQUEST_DENIED') throw new Error('Google key error: ' + (data.error_message || 'Check your key in Admin.'));
-  if (data.status === 'OVER_QUERY_LIMIT') throw new Error('Google API quota exceeded. Try again later.');
-  if (data.status === 'ZERO_RESULTS' || !data.results?.length) {
-    document.getElementById('resultsArea').innerHTML = `<div class="empty"><div class="empty-icon">🔍</div><div class="empty-title">No results found</div><div class="empty-sub">Try a different search or location.</div></div>`;
-    return;
+/* =========================
+   EMAIL
+========================= */
+
+function handleEmail(i, event){
+  const biz = STATE.results[i];
+  const email = biz?.email;
+
+  if (email) {
+    window.location.href = `mailto:${email}`;
+  } else {
+    alert('No email available');
   }
-  const priceMap = { 0:'Free', 1:'$', 2:'$$', 3:'$$$', 4:'$$$$' };
-  STATE.results = data.results.slice(0, 5).map((p, i) => ({
-    name: p.name,
-    category: p.types?.[0]?.replace(/_/g,' ') || 'Business',
-    address: p.formatted_address || STATE.location,
-    phone: '', email: '',
-    rating: p.rating ? p.rating.toFixed(1) : 'N/A',
-    hours: p.opening_hours?.open_now !== undefined ? (p.opening_hours.open_now ? '🟢 Open now' : '🔴 Closed') : 'Hours vary',
-    price: priceMap[p.price_level] || '',
-    sponsored: i === 0,
-    place_id: p.place_id
-  }));
-  renderResults(q);
-  STATE.results.forEach((biz, i) => { if (biz.place_id) fetchPlaceDetails(biz.place_id, i); });
+
+  const btn = event?.target?.closest('.action-btn');
+  if (!btn) return;
+
+  btn.innerHTML = `✓ Sent`;
+
+  setTimeout(() => {
+    btn.innerHTML = `Email`;
+  }, 2000);
 }
+
+/* =========================
+   LIST MODAL (SAFE STRINGS)
+========================= */
+
+function openListModal(i){
+  STATE.currentListTarget = i;
+  let html = '';
+
+  Object.entries(STATE.lists).forEach(([name,items])=>{
+    const has = items.find(b=>b.name === (STATE.results[i]||{}).name);
+
+    html += `
+      <div class="list-option" onclick="toggleListOption(${JSON.stringify(name)})">
+        <div>
+          <div class="list-option-name">${escHtml(name)}</div>
+          <div class="list-option-count">${items.length} business${items.length!==1?'es':''}</div>
+        </div>
+        <div class="check-circle ${has?'checked':''}" id="chk-${name.replace(/\W/g,'_')}">
+          ${has ? '✓' : ''}
+        </div>
+      </div>`;
+  });
+
+  const count = Object.keys(STATE.lists).length;
+
+  if(count < 2){
+    html += `<div class="list-option" onclick="createNewList()">
+      <div>
+        <div class="list-option-name">+ Create new list</div>
+        <div class="list-option-count">${2-count} more free</div>
+      </div>
+    </div>`;
+  }
+
+  document.getElementById('listOptions').innerHTML = html;
+  document.getElementById('listModal').style.display='flex';
+}
+
+/* =========================
+   EXPORT LIST (FIXED)
+========================= */
+
+function exportList(name){
+  const items = STATE.lists[name] || [];
+
+  let txt = `Calldid List: ${name}\nGenerated ${new Date().toLocaleDateString()}\nGet Calldid at calldid.app\n\n`;
+
+  items.forEach((b,i)=>{
+    txt += `${i+1}. ${b.name}\n   📞 ${b.phone||'N/A'}\n   📧 ${b.email||'N/A'}\n   📍 ${b.address||'N/A'}\n\n`;
+  });
+
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob([txt],{type:'text/plain'}));
+  a.download = `calldid-${name.toLowerCase().replace(/\s+/g,'-')}.txt`;
+  a.click();
+}
+
+/* =========================
+   FETCH DETAILS (DEBUG SAFE)
+========================= */
 
 async function fetchPlaceDetails(placeId, index) {
   try {
     const WORKER = 'https://calldid-places.zeesdev.workers.dev';
     const res = await fetch(`${WORKER}?place_id=${placeId}&type=details`);
     const data = await res.json();
+
     if (data.result) {
       STATE.results[index].phone = data.result.formatted_phone_number || '';
       STATE.results[index].email = data.result.website || '';
-      if (data.result.opening_hours?.weekday_text?.[0]) STATE.results[index].hours = data.result.opening_hours.weekday_text[0];
       renderResults(STATE.searchQuery);
     }
-  } catch(e) {}
-}
-
-function renderResults(q){
-  const area=document.getElementById('resultsArea');
-  const emoji=getEmoji(q);
-  let html=''; let firstOrganic=true;
-  STATE.results.forEach((biz,i)=>{
-    const called=STATE.called[i],inList=STATE.inLists[i],note=STATE.notes[i];
-    if(i===0) html+=`<div class="sponsored-label"><svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg> Sponsored</div>`;
-    else if(firstOrganic&&!biz.sponsored){html+=`<div class="section-label">Results near ${escHtml(STATE.location)}</div>`;firstOrganic=false;}
-    html+=`<div class="card ${biz.sponsored?'sponsored':''} ${called?'called':''}">
-      <div class="card-top">
-        <div class="biz-icon">${emoji}</div>
-        <div class="biz-info">
-          <div class="biz-name">${escHtml(biz.name)}${called?`<span class="called-badge">✓ Called</span>`:''}</div>
-          <div class="biz-sub">${escHtml(biz.category)} · ${escHtml(biz.address)}</div>
-          <div class="rating">★ ${biz.rating} <span style="color:var(--muted);font-weight:400;">· ${escHtml(biz.hours)}</span></div>
-        </div>
-      </div>
-      ${biz.price?`<span class="price-tag">💰 ${escHtml(biz.price)}</span>`:''}
-      ${note&&note.avail==='yes'?`<span class="availability avail-yes">✓ Available${note.price?' · '+escHtml(note.price):''}</span>`:''}
-      ${note&&note.avail==='no'?`<span class="availability avail-no">✗ Not available</span>`:''}
-      ${note&&note.text?`<div style="font-size:12px;color:var(--muted);background:var(--surface2);border-radius:8px;padding:8px 10px;margin-bottom:8px;">📝 ${escHtml(note.text)}</div>`:''}
-      <div class="card-actions">
-        <button class="action-btn ${called?'btn-call called-state':'btn-call'}" onclick="callBusiness(${i})">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M6.62 10.79c1.44 2.83 3.76 5.14 6.59 6.59l2.2-2.2c.27-.27.67-.36 1.02-.24 1.12.37 2.33.57 3.57.57.55 0 1 .45 1 1V20c0 .55-.45 1-1 1-9.39 0-17-7.61-17-17 0-.55.45-1 1-1h3.5c.55 0 1 .45 1 1 0 1.25.2 2.45.57 3.57.11.35.03.74-.25 1.02l-2.2 2.2z"/></svg>
-          ${called?'Called':'Call'}
-        </button>
-        <button class="action-btn btn-email" onclick="handleEmail(${i},event)">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,12 2,6"/></svg>
-          Email
-        </button>
-        <button class="action-btn btn-note" onclick="openNoteModal(${i})">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
-          Note
-        </button>
-        <button class="action-btn btn-add ${inList?'in-list':''}" onclick="openListModal(${i})">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-          ${inList?'Saved':'List'}
-        </button>
-      </div>
-    </div>`;
-  });
-  area.innerHTML=html;
-}
-
-function callBusiness(i){
-  const biz=STATE.results[i];
-  STATE.called[i]=true;
-  if(biz.phone) window.location.href=`tel:${biz.phone.replace(/\D/g,'')}`;
-  const q=STATE.searchQuery;
-  if(!STATE.lists[q]&&Object.keys(STATE.lists).length<2) STATE.lists[q]=[];
-  if(STATE.lists[q]&&!STATE.lists[q].find(b=>b.name===biz.name)){STATE.lists[q].push({...biz,calledAt:new Date().toLocaleTimeString()});STATE.inLists[i]=true;}
-  saveState(); renderResults(STATE.searchQuery);
-  setTimeout(()=>openNoteModal(i),600);
-}
-
-function handleEmail(i,event){
-  window.location.href=`mailto:${STATE.results[i].email}`;
-  const btn=event.target.closest('.action-btn');
-  btn.innerHTML=`<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg> Sent`;
-  setTimeout(()=>{btn.innerHTML=`<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,12 2,6"/></svg> Email`;},2000);
-}
-
-function openNoteModal(i){
-  STATE.currentBizIndex=i;
-  const biz=STATE.results[i],note=STATE.notes[i]||{};
-  document.getElementById('noteModalTitle').textContent=biz.name;
-  document.getElementById('noteText').value=note.text||'';
-  document.getElementById('priceInput').value=note.price||'';
-  document.getElementById('qtyInput').value=note.qty||'';
-  document.getElementById('avail-yes').className='avail-btn'+(note.avail==='yes'?' selected-yes':'');
-  document.getElementById('avail-no').className='avail-btn'+(note.avail==='no'?' selected-no':'');
-  document.getElementById('noteModal').style.display='flex';
-}
-function selectAvail(val){
-  document.getElementById('avail-yes').className='avail-btn'+(val==='yes'?' selected-yes':'');
-  document.getElementById('avail-no').className='avail-btn'+(val==='no'?' selected-no':'');
-}
-
-function openListModal(i){
-  STATE.currentListTarget=i;
-  let html='';
-  Object.entries(STATE.lists).forEach(([name,items])=>{
-    const has=items.find(b=>b.name===(STATE.results[i]||{}).name);
-    html+=`<div class="list-option" onclick="toggleListOption('${escHtml(name)}')"><div><div class="list-option-name">${escHtml(name)}</div><div class="list-option-count">${items.length} business${items.length!==1?'es':''}</div></div><div class="check-circle ${has?'checked':''}" id="chk-${name.replace(/\W/g,'_')}">${has?`<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg>`:''}</div></div>`;
-  });
-  const count=Object.keys(STATE.lists).length;
-  if(count<2) html+=`<div class="list-option" onclick="createNewList()"><div><div class="list-option-name">+ Create new list</div><div class="list-option-count">${2-count} more free</div></div></div>`;
-  else html+=`<div style="font-size:12px;color:var(--muted);text-align:center;padding:12px;background:var(--surface2);border-radius:8px;">⭐ Upgrade to Premium for unlimited lists</div>`;
-  document.getElementById('listOptions').innerHTML=html;
-  document.getElementById('listModal').style.display='flex';
-}
-function toggleListOption(name){
-  const i=STATE.currentListTarget,biz=STATE.results[i],list=STATE.lists[name];
-  if(!list) return;
-  const idx=list.findIndex(b=>b.name===biz.name),el=document.getElementById('chk-'+name.replace(/\W/g,'_'));
-  if(idx>-1){list.splice(idx,1);el.className='check-circle';el.innerHTML='';}
-  else{list.push({...biz,addedAt:new Date().toLocaleTimeString()});el.className='check-circle checked';el.innerHTML=`<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg>`;}
-}
-function createNewList(){
-  const name=prompt('List name:');
-  if(!name||!name.trim()) return;
-  if(Object.keys(STATE.lists).length>=2&&USER.plan!=='premium'){
-    alert('Upgrade to Premium for unlimited lists!'); return;
-  }
-  STATE.lists[name.trim()]=[];
-  saveState();
-  if(STATE.currentListTarget!==null) openListModal(STATE.currentListTarget);
-  else renderLists();
-}
-
-function renameList(oldName){
-  const newName=prompt('New list name:', oldName);
-  if(!newName||!newName.trim()||newName.trim()===oldName) return;
-  STATE.lists[newName.trim()]=STATE.lists[oldName];
-  delete STATE.lists[oldName];
-  saveState();
-  renderLists();
-}
-
-function deleteList(name){
-  if(!confirm(`Delete list "${name}"? This cannot be undone.`)) return;
-  delete STATE.lists[name];
-  saveState();
-  renderLists();
-}
-
-function confirmAddToList(){
-  const i=STATE.currentListTarget;
-  STATE.inLists[i]=Object.values(STATE.lists).some(l=>l.find(b=>b.name===(STATE.results[i]||{}).name));
-  document.getElementById('listModal').style.display='none'; saveState(); renderResults(STATE.searchQuery);
-}
-
-function toggleListExpand(name){
-  STATE.expandedLists[name] = !STATE.expandedLists[name];
-  renderLists();
-}
-
-function renderLists(){
-  const area=document.getElementById('listsArea');
-  const count=Object.keys(STATE.lists).length;
-  const isPremium=USER.plan==='premium';
-  let html=`
-    <div class="lists-header">
-      <div class="lists-title">My Lists</div>
-      <div style="display:flex;align-items:center;gap:8px;">
-        <div class="list-counter">${count}/${isPremium?'∞':'2'} lists</div>
-        <button onclick="createNewList()" style="background:var(--green);border:none;border-radius:100px;padding:5px 12px;color:#000;font-family:'DM Sans',sans-serif;font-size:12px;font-weight:700;cursor:pointer;">+ New</button>
-      </div>
-    </div>`;
-
-  if(!isPremium){
-    html+=`<div class="premium-banner"><div class="premium-icon">⭐</div><div class="premium-text"><div class="premium-title">Go Premium</div><div class="premium-sub">Unlimited lists, share & export</div></div><button class="upgrade-btn" onclick="switchTab('profile')">Upgrade</button></div>`;
-  }
-
-  if(!Object.keys(STATE.lists).length){
-    html+=`<div class="empty"><div class="empty-icon">📋</div><div class="empty-title">No lists yet</div><div class="empty-sub">Search, hit Call, and businesses appear here.</div></div>`;
-  } else {
-    Object.entries(STATE.lists).forEach(([name,items])=>{
-      const isExpanded = !!STATE.expandedLists[name];
-      html+=`<div class="list-card">
-        <div onclick="toggleListExpand('${escHtml(name)}')" style="cursor:pointer;">
-          <div class="list-card-name" style="justify-content:space-between;">
-            <div style="display:flex;align-items:center;gap:6px;">
-              <span style="color:var(--green);transition:transform 0.2s;display:inline-block;transform:rotate(${isExpanded?'90':'0'}deg);">▶</span>
-              📋 ${escHtml(name)}
-              <span style="font-size:11px;color:var(--muted);font-weight:400;">${items.length} business${items.length!==1?'es':''}</span>
-            </div>
-            <div style="display:flex;gap:4px;" onclick="event.stopPropagation()">
-              <button onclick="renameList('${escHtml(name)}')" style="background:var(--surface3);border:none;border-radius:6px;padding:4px 8px;color:var(--muted);font-size:11px;cursor:pointer;">✏️</button>
-              <button onclick="deleteList('${escHtml(name)}')" style="background:rgba(239,68,68,0.1);border:none;border-radius:6px;padding:4px 8px;color:var(--red);font-size:11px;cursor:pointer;">🗑️</button>
-            </div>
-          </div>
-        </div>
-        ${isExpanded ? `
-        <div style="display:flex;gap:4px;margin-top:8px;" onclick="event.stopPropagation()">
-          <button class="share-btn" onclick="shareList('${escHtml(name)}')">
-            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg>Share
-          </button>
-          <button class="export-btn" onclick="exportList('${escHtml(name)}')">
-            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>Export
-          </button>
-        </div>
-        ${items.length>0?`<div class="list-items">${items.map((b,bi)=>`
-          <div class="list-item" style="flex-direction:column;align-items:flex-start;gap:6px;">
-            <div style="display:flex;align-items:center;justify-content:space-between;width:100%;">
-              <div>
-                <div class="list-item-name">${escHtml(b.name)}</div>
-                <div class="list-item-meta">${escHtml(b.phone||'')}${b.phone&&b.category?' · ':''}${escHtml(b.category||'')}</div>
-              </div>
-              <div style="display:flex;align-items:center;gap:6px;">
-                <button onclick="editSavedNote('${escHtml(name)}',${bi})" style="background:var(--surface3);border:none;border-radius:6px;padding:4px 8px;color:var(--muted);font-size:11px;cursor:pointer;">📝 Note</button>
-                <span class="called-badge">✓</span>
-              </div>
-            </div>
-            ${b.note?`<div style="font-size:12px;color:var(--muted);background:var(--surface2);border-radius:6px;padding:6px 8px;width:100%;">📝 ${escHtml(b.note)}</div>`:''}
-            ${b.availability?`<span style="font-size:11px;padding:3px 8px;border-radius:100px;background:${b.availability==='yes'?'rgba(34,197,94,0.1)':'rgba(239,68,68,0.1)'};color:${b.availability==='yes'?'var(--green)':'var(--red)'};">${b.availability==='yes'?'✓ Available':'✗ Not available'}${b.note_price?' · '+escHtml(b.note_price):''}</span>`:''}
-          </div>`).join('')}</div>`:'<div style="padding:10px 0;font-size:13px;color:var(--muted);">No businesses yet — search and hit Call!</div>'}
-        ` : ''}
-      </div>`;
-    });
-  }
-  area.innerHTML=html;
-}
-
-function shareList(name){
-  const items=STATE.lists[name]||[];
-  const text=`My "${name}" list from Calldid:\n\n${items.map((b,i)=>`${i+1}. ${b.name} — ${b.phone||'N/A'}`).join('\n')}\n\nGet Calldid at calldid.app`;
-  if(navigator.share) navigator.share({title:`Calldid: ${name}`,text});
-  else navigator.clipboard.writeText(text).then(()=>alert('Copied to clipboard!'));
-}
-
-function editSavedNote(listName, bizIndex){
-  const biz = STATE.lists[listName][bizIndex];
-  if(!biz) return;
-  STATE.currentEditList = listName;
-  STATE.currentEditBizIndex = bizIndex;
-  document.getElementById('noteModalTitle').textContent = biz.name;
-  document.getElementById('noteText').value = biz.note || '';
-  document.getElementById('priceInput').value = biz.note_price || '';
-  document.getElementById('qtyInput').value = biz.qty || '';
-  document.getElementById('avail-yes').className = 'avail-btn' + (biz.availability==='yes'?' selected-yes':'');
-  document.getElementById('avail-no').className = 'avail-btn' + (biz.availability==='no'?' selected-no':'');
-  // Override save button to save to list instead
-  document.getElementById('noteModal').style.display='flex';
-  document.getElementById('noteModal').dataset.mode = 'list';
-}
-
-function saveNote(){
-  const mode = document.getElementById('noteModal').dataset.mode;
-  const avail = document.getElementById('avail-yes').classList.contains('selected-yes')?'yes':
-                document.getElementById('avail-no').classList.contains('selected-no')?'no':null;
-  const note = document.getElementById('noteText').value;
-  const price = document.getElementById('priceInput').value;
-  const qty = document.getElementById('qtyInput').value;
-
-  if(mode === 'list') {
-    // Editing a saved business in a list
-    const biz = STATE.lists[STATE.currentEditList][STATE.currentEditBizIndex];
-    if(biz) { biz.note=note; biz.availability=avail; biz.note_price=price; biz.qty=qty; }
-    document.getElementById('noteModal').dataset.mode = '';
-    document.getElementById('noteModal').style.display='none';
-    saveState(); renderLists();
-  } else {
-    // Editing from search results
-    const i=STATE.currentBizIndex;
-    STATE.notes[i]={avail,text:note,price,qty};
-    document.getElementById('noteModal').style.display='none';
-    saveState(); renderResults(STATE.searchQuery);
+  } catch(e){
+    console.error('Place details failed:', e);
   }
 }
-  const items=STATE.lists[name]||[];
-  let txt=`Calldid List: ${name}\nGenerated ${new Date().toLocaleDateString()}\nGet Calldid at calldid.app\n\n`;
-  items.forEach((b,i)=>txt+=`${i+1}. ${b.name}\n   📞 ${b.phone||'N/A'}\n   📧 ${b.email||'N/A'}\n   📍 ${b.address||'N/A'}\n\n`);
-  const a=document.createElement('a'); a.href=URL.createObjectURL(new Blob([txt],{type:'text/plain'})); a.download=`calldid-${name.toLowerCase().replace(/\s+/g,'-')}.txt`; a.click();
-}
-
-function renderProfile(){
-  const area=document.getElementById('profileArea');
-  const initial=(USER.name||'U').charAt(0).toUpperCase();
-  const totalCalled=Object.keys(STATE.called).length;
-  const totalBiz=Object.values(STATE.lists).reduce((a,l)=>a+l.length,0);
-  const totalLists=Object.values(STATE.lists).filter(l=>l.length>0).length;
-  const isPremium=USER.plan==='premium';
-  area.innerHTML=`<div style="padding-top:8px;">
-    <div class="profile-header">
-      <div class="avatar">${initial}</div>
-      <div style="flex:1;min-width:0;">
-        <div class="profile-name">${escHtml(USER.name||'User')}</div>
-        <div class="profile-email">${escHtml(USER.email||'')}</div>
-        <div class="profile-plan ${isPremium?'plan-premium':'plan-free'}">${isPremium?'⭐ Premium':'✓ Basic Free'}</div>
-      </div>
-      <button onclick="openEditProfile()" style="background:var(--surface3);border:none;border-radius:8px;padding:8px;cursor:pointer;color:var(--muted);">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
-      </button>
-    </div>
-    <div class="stats-row">
-      <div class="stat-card"><div class="stat-num">${totalCalled}</div><div class="stat-label">Called</div></div>
-      <div class="stat-card"><div class="stat-num">${totalBiz}</div><div class="stat-label">Saved</div></div>
-      <div class="stat-card"><div class="stat-num">${totalLists}</div><div class="stat-label">Lists</div></div>
-    </div>
-    ${!isPremium?`<div class="premium-banner" style="margin-bottom:20px;"><div class="premium-icon">⭐</div><div class="premium-text"><div class="premium-title">Upgrade to Premium</div><div class="premium-sub">Unlimited lists · Share · Export</div></div><button class="upgrade-btn" onclick="upgradePremium()">$4.99/mo</button></div>`:''}
-    <div class="section-title">Account</div>
-    <div class="setting-item" onclick="openLocationModal()">
-      <div class="setting-left"><div class="setting-icon">📍</div><div><div class="setting-label">Location</div><div class="setting-value">${escHtml(STATE.location)}</div></div></div>
-      <svg class="setting-arrow" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 18 15 12 9 6"/></svg>
-    </div>
-    <div class="setting-item" onclick="openEditProfile()">
-      <div class="setting-left"><div class="setting-icon">👤</div><div><div class="setting-label">Edit Profile</div><div class="setting-value">Name & email</div></div></div>
-      <svg class="setting-arrow" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 18 15 12 9 6"/></svg>
-    </div>
-    <div class="setting-item" onclick="clearData()">
-      <div class="setting-left"><div class="setting-icon">🗑️</div><div><div class="setting-label">Clear All Data</div><div class="setting-value">Reset calls & lists</div></div></div>
-      <svg class="setting-arrow" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 18 15 12 9 6"/></svg>
-    </div>
-    <div class="section-title" style="margin-top:16px;">App</div>
-    <div class="setting-item"><div class="setting-left"><div class="setting-icon">📱</div><div><div class="setting-label">Version</div><div class="setting-value">Calldid v1.0 PWA</div></div></div></div>
-    <div class="setting-item" onclick="document.getElementById('installBanner').style.display='flex'"><div class="setting-left"><div class="setting-icon">⬇️</div><div><div class="setting-label">Install App</div><div class="setting-value">Add to home screen</div></div></div><svg class="setting-arrow" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 18 15 12 9 6"/></svg></div>
-    <button class="logout-btn" onclick="logout()">Log Out</button>
-    <div style="text-align:center;font-size:11px;color:var(--muted);margin-top:12px;">Member since ${USER.joined||'today'}</div>
-  </div>`;
-}
-
-function openEditProfile(){
-  document.getElementById('edit-name').value=USER.name||'';
-  document.getElementById('edit-email').value=USER.email||'';
-  document.getElementById('editProfileModal').style.display='flex';
-}
-
-async function saveProfile(){
-  const name=document.getElementById('edit-name').value.trim();
-  const email=document.getElementById('edit-email').value.trim();
-  if(!name||!email) return;
-  USER.name=name; USER.email=email;
-  localStorage.setItem('calldid_user',JSON.stringify(USER));
-  // Update Supabase profile
-  const { data: { session } } = await sb.auth.getSession();
-  if(session) await sb.from('profiles').update({name}).eq('id',session.user.id);
-  document.getElementById('editProfileModal').style.display='none';
-  renderProfile();
-}
-
-async function upgradePremium(){
-  USER.plan='premium';
-  localStorage.setItem('calldid_user',JSON.stringify(USER));
-  const { data: { session } } = await sb.auth.getSession();
-  if(session) await sb.from('profiles').update({plan:'premium'}).eq('id',session.user.id);
-  alert('🎉 Welcome to Premium! Unlimited lists unlocked.');
-  renderProfile();
-}
-
-async function clearData(){
-  if(!confirm('Clear all your calls, notes, and lists? This cannot be undone.')) return;
-  STATE.called={}; STATE.notes={}; STATE.inLists={}; STATE.lists={'My Searches':[],'Favorites':[]};
-  localStorage.removeItem('calldid_state');
-  // Clear from Supabase too
-  const { data: { session } } = await sb.auth.getSession();
-  if(session){
-    await sb.from('businesses').delete().eq('user_id',session.user.id);
-    await sb.from('lists').delete().eq('user_id',session.user.id);
-  }
-  renderProfile(); alert('Data cleared.');
-}
-
-async function logout(){
-  if(!confirm('Log out of Calldid?')) return;
-  await sb.auth.signOut();
-  localStorage.removeItem('calldid_user');
-  localStorage.removeItem('calldid_state');
-  window.location.href='auth.html';
-}
-
 // ── Supabase ──────────────────────────────────────────────────────
 const SB_URL = 'https://issiqvhdydwmpcffwdvb.supabase.co';
 const SB_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imlzc2lxdmhkeWR3bXBjZmZ3ZHZiIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQyNDg0NTgsImV4cCI6MjA4OTgyNDQ1OH0.3moRHY4r-SX2Z429kvXDLy1OPIJNjVRdzdNxcVEvTmU';
