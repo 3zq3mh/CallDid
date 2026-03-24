@@ -474,7 +474,7 @@ function renderResults(q){
 function callBusiness(i){
   const biz=STATE.results[i];
   STATE.called[i]=true;
-  if(biz.phone) window.location.href=`tel:${biz.phone.replace(/\D/g,'')}`;
+  if(biz.phone) setTimeout(()=>window.location.href=`tel:${biz.phone.replace(/\D/g,'')}`,300);
   const q=STATE.searchQuery;
   if(!STATE.lists[q]&&Object.keys(STATE.lists).length<2) STATE.lists[q]=[];
   if(STATE.lists[q]&&!STATE.lists[q].find(b=>b.name===biz.name)){STATE.lists[q].push({...biz,calledAt:new Date().toLocaleTimeString()});STATE.inLists[i]=true;}
