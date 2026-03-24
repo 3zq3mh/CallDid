@@ -1072,7 +1072,10 @@ async function deployFile() {
 
   const content = ADMIN.editor.getValue();
   const encoded = btoa(unescape(encodeURIComponent(content)));
-  const sha = ADMIN.fileSHAs[ADMIN.currentFile];
+  // Always get fresh SHA from GitHub before deploying
+const shaRes = await ghFetch(`https://api.github.com/repos/${ADMIN.ghUser}/${ADMIN.ghRepo}/contents/${ADMIN.currentFile}`);
+const shaData = await shaRes.json();
+const sha = shaData.sha;
 
   document.getElementById('deployBtn').textContent = '⏳ Deploying...';
   document.getElementById('deployBtn').disabled = true;
