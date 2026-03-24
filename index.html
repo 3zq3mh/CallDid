@@ -741,7 +741,7 @@ async function saveState(){
   for(const [listName, businesses] of Object.entries(STATE.lists)){
     if(!businesses.length) continue;
     // Upsert list
-    const { data: listData } = await supabase.from('lists').upsert({user_id:uid,name:listName},{onConflict:'user_id,name'}).select().single();
+    const { data: listData } = await supabase.from('lists').upsert({user_id:uid,name:listName},{onConflict:'user_id,name'}).select().maybeSingle();
     if(!listData) continue;
     // Upsert businesses in that list
     for(const biz of businesses){
@@ -787,7 +787,7 @@ async function loadState(){
 
     // Load profile
     try {
-      const { data: profile } = await supabase.from('profiles').select('*').eq('id',session.user.id).single();
+      const { data: profile } = await supabase.from('profiles').select('*').eq('id',session.user.id).maybeSingle();
       if(profile){
         USER={ name:profile.name||'User', email:session.user.email, location:profile.location||'Kansas City, MO', plan:profile.plan||'basic', joined:new Date(session.user.created_at).toLocaleDateString() };
         STATE.location=USER.location;
