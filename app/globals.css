@@ -11,7 +11,7 @@
   --safe-bottom: env(safe-area-inset-bottom, 0px);
 }
 html, body { height: 100%; }
-body { font-family: 'DM Sans', sans-serif; background: var(--bg); color: var(--text); }
+body { font-family: var(--font-dm-sans, 'DM Sans', sans-serif); background: var(--bg); color: var(--text); }
 
 /* ── Main app ── */
 .app-main { width: 100%; max-width: 430px; height: 100dvh; background: var(--bg); display: flex; flex-direction: column; position: relative; overflow: hidden; margin: 0 auto; }
