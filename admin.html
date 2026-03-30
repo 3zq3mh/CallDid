@@ -843,28 +843,46 @@ function toggleEye(id, btn) {
 }
 
 // ── Features ──────────────────────────────────────────────────────
-function loadFeatures() {
-  const saved = JSON.parse(localStorage.getItem('calldid_features')||'{}');
+async function loadFeatures() {
+  // Try Supabase first, fall back to localStorage
+  let saved = {};
+  try {
+    const val = await loadSetting('features');
+    if (val) saved = JSON.parse(val);
+  } catch(e) {}
+  if (!Object.keys(saved).length) {
+    saved = JSON.parse(localStorage.getItem('calldid_features')||'{}');
+  }
   Object.entries(saved).forEach(([k,v]) => {
     const el = document.getElementById('f-'+k);
     if (el) el.checked = v;
   });
 }
 
-function saveFeatures() {
+async function saveFeatures() {
   const featureIds = ['sponsored','google-search','ai-search','call-track','notes','email','lists','premium','stripe','export','share','require-login','install-banner','offline'];
   const features = {};
   featureIds.forEach(id => {
     const el = document.getElementById('f-'+id);
     if (el) features[id] = el.checked;
   });
-  localStorage.setItem('calldid_features', JSON.stringify(features));
+  const json = JSON.stringify(features);
+  localStorage.setItem('calldid_features', json);
+  await saveSetting('features', json);
   toast('✅ Feature settings saved!', 'ok');
 }
 
 // ── App Settings ──────────────────────────────────────────────────
-function loadSettings() {
-  const saved = JSON.parse(localStorage.getItem('calldid_app_settings')||'{}');
+async function loadSettings() {
+  // Try Supabase first, fall back to localStorage
+  let saved = {};
+  try {
+    const val = await loadSetting('app_settings');
+    if (val) saved = JSON.parse(val);
+  } catch(e) {}
+  if (!Object.keys(saved).length) {
+    saved = JSON.parse(localStorage.getItem('calldid_app_settings')||'{}');
+  }
   const fields = ['appname','tagline','desc','price','free-lists','premium-lists','default-location','support-email','website'];
   fields.forEach(f => {
     const el = document.getElementById('s-'+f);
@@ -874,13 +892,15 @@ function loadSettings() {
   if (saved['c-bg']) { document.getElementById('c-bg').value = saved['c-bg']; document.getElementById('c-bg-hex').value = saved['c-bg']; }
 }
 
-function saveSettings() {
+async function saveSettings() {
   const fields = ['appname','tagline','desc','price','free-lists','premium-lists','default-location','support-email','website'];
   const settings = {};
   fields.forEach(f => { const el = document.getElementById('s-'+f); if(el) settings[f] = el.value; });
   settings['c-primary'] = document.getElementById('c-primary').value;
   settings['c-bg'] = document.getElementById('c-bg').value;
-  localStorage.setItem('calldid_app_settings', JSON.stringify(settings));
+  const json = JSON.stringify(settings);
+  localStorage.setItem('calldid_app_settings', json);
+  await saveSetting('app_settings', json);
   toast('✅ App settings saved!', 'ok');
 }
 

@@ -1,0 +1,42 @@
+
+
+I have a PWA app called Calldid. It's a local business search and call tracker. Here's the full context:
+Tech stack:
+* Frontend: Vanilla HTML/CSS/JS (single file PWA)
+* Auth & Database: Supabase
+* Search: Google Places API via Cloudflare Worker
+* Hosting: GitHub Pages
+Supabase credentials:
+* URL: https://issiqvhdydwmpcffwdvb.supabase.co
+* Anon key: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imlzc2lxdmhkeWR3bXBjZmZ3ZHZiIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQyNDg0NTgsImV4cCI6MjA4OTgyNDQ1OH0.3moRHY4r-SX2Z429kvXDLy1OPIJNjVRdzdNxcVEvTmU
+Supabase tables:
+* profiles (id, name, location, plan, created_at)
+* lists (id, user_id, name, created_at)
+* businesses (id, user_id, list_id, name, category, phone, email, address, rating, hours, price, called, note, availability, note_price, created_at)
+* app_settings (key, value, updated_at)
+Cloudflare Worker URL: https://calldid-places.zeesdev.workers.dev
+GitHub repo: https://github.com/3zq3mh/CallDid
+Known issues to fix:
+1. Lists don't persist after page refresh — they load from localStorage instead of Supabase
+2. Notes edited on saved businesses don't save to Supabase
+3. Search history only saves to localStorage, not Supabase
+4. Admin panel settings don't always persist after logout
+5. The Supabase client is named sb in index.html — make sure all database calls use sb.from() and sb.auth() not supabase.from()
+6. The saveState function saves to Supabase but businesses with null names keep appearing — need to filter those out
+7. Lists should be collapsible in the UI
+8. When calling a business, window.location.href = tel: navigates away before saveState completes — add a 300ms delay
+App features:
+* Search local businesses by keyword and location with radius selector and shows distance based on the home address for the use that the user adds when they click on zip code to change. Address shows under the zip code and address only used to measure the distance not to search business. 
+* Call businesses (tracks called status)
+* Add notes, availability (yes/no), price, quantity to each business
+* Save businesses to lists (2 free, unlimited premium)
+* Share and export lists
+* Admin panel at /admin.html with API keys, feature toggles, user management, code editor connected to GitHub
+* PWA installable on mobile
+Files:
+* index.html — main app
+* auth.html — signup/login
+* admin.html — admin panel
+* manifest.json — PWA manifest
+* sw.js — service worker
+Please fix all the issues above and make sure data persists properly in Supabase across sessions and devices.

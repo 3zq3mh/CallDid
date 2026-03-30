@@ -287,16 +287,16 @@
 <script>
 let USER = {};
 
-
 const STATE = {
-  results:[], called:{}, notes:{}, inLists:{},
+  results:[], called:{}, notes:{}, notesByName:{}, inLists:{},
   lists:{'My Searches':[],'Favorites':[]},
-  currentBizIndex:null, searchQuery:'', activeTab:'search',
-  location: USER.location || 'Kansas City, MO',
+  searchHistory:[], collapsedLists:{},
+  currentBizIndex:null, currentListTarget:null, searchQuery:'', activeTab:'search',
+  location: 'Kansas City, MO',
   radius: 10
 };
 
-function saveStateLocal() { try { localStorage.setItem('calldid_state', JSON.stringify({called:STATE.called,notes:STATE.notes,lists:STATE.lists,inLists:STATE.inLists})); } catch(e){} }
+function saveStateLocal() { try { localStorage.setItem('calldid_state', JSON.stringify({called:STATE.called,notes:STATE.notes,notesByName:STATE.notesByName,lists:STATE.lists,inLists:STATE.inLists,searchHistory:STATE.searchHistory})); } catch(e){} }
 function loadStateLocal() { try { const s=localStorage.getItem('calldid_state'); if(s) Object.assign(STATE, JSON.parse(s)); } catch(e){} }
 
 let deferredPrompt=null;
@@ -372,6 +372,12 @@ async function doSearch(){
   if(!q) return;
   if(!navigator.onLine){document.getElementById('resultsArea').innerHTML=`<div class="empty"><div class="empty-icon">📡</div><div class="empty-title">You're offline</div><div class="empty-sub">Connect to search.</div></div>`;return;}
   STATE.searchQuery=q;
+  // Track search history in Supabase
+  if(!STATE.searchHistory.includes(q)){
+    STATE.searchHistory.unshift(q);
+    if(STATE.searchHistory.length>20) STATE.searchHistory.pop();
+    saveSearchHistory();
+  }
   const btn=document.getElementById('searchBtn');
   btn.disabled=true; btn.textContent='...';
   document.getElementById('resultsArea').innerHTML=`<div class="loading-wrap"><div class="spinner"></div><div class="loading-text">Finding businesses near ${STATE.location}...</div></div>`;
@@ -382,6 +388,15 @@ async function doSearch(){
     document.getElementById('resultsArea').innerHTML=`<div class="empty"><div class="empty-icon">⚠️</div><div class="empty-title">Search failed</div><div class="empty-sub">${e.message||'Please try again.'}</div></div>`;
   }
   btn.disabled=false; btn.textContent='Search';
+}
+
+async function saveSearchHistory(){
+  saveStateLocal();
+  const { data: { session } } = await sb.auth.getSession();
+  if(!session) return;
+  try {
+    await sb.from('app_settings').upsert({key:`search_history_${session.user.id}`,value:JSON.stringify(STATE.searchHistory),updated_at:new Date().toISOString()},{onConflict:'key'});
+  } catch(e){}
 }
 
 async function searchWithGoogle(q, apiKey) {
@@ -409,6 +424,10 @@ async function searchWithGoogle(q, apiKey) {
     sponsored: i === 0,
     place_id: p.place_id
   }));
+  // Re-link notes from notesByName so they survive page refresh
+  STATE.results.forEach((biz, i) => {
+    if(STATE.notesByName[biz.name]) STATE.notes[i] = STATE.notesByName[biz.name];
+  });
   renderResults(q);
   STATE.results.forEach((biz, i) => { if (biz.place_id) fetchPlaceDetails(biz.place_id, i); });
 }
@@ -474,11 +493,13 @@ function renderResults(q){
 function callBusiness(i){
   const biz=STATE.results[i];
   STATE.called[i]=true;
-  if(biz.phone) window.location.href=`tel:${biz.phone.replace(/\D/g,'')}`;
   const q=STATE.searchQuery;
   if(!STATE.lists[q]&&Object.keys(STATE.lists).length<2) STATE.lists[q]=[];
   if(STATE.lists[q]&&!STATE.lists[q].find(b=>b.name===biz.name)){STATE.lists[q].push({...biz,calledAt:new Date().toLocaleTimeString()});STATE.inLists[i]=true;}
-  saveState(); renderResults(STATE.searchQuery);
+  saveState();
+  renderResults(STATE.searchQuery);
+  // Delay tel: navigation by 300ms so saveState can start persisting before we navigate away
+  if(biz.phone) setTimeout(()=>{ window.location.href=`tel:${biz.phone.replace(/\D/g,'')}`; }, 300);
   setTimeout(()=>openNoteModal(i),600);
 }
 
@@ -491,8 +512,9 @@ function handleEmail(i,event){
 
 function openNoteModal(i){
   STATE.currentBizIndex=i;
-  const biz=STATE.results[i],note=STATE.notes[i]||{};
-  document.getElementById('noteModalTitle').textContent=biz.name;
+  const biz=STATE.results[i];
+  const note=STATE.notes[i]||STATE.notesByName[biz?.name]||{};
+  document.getElementById('noteModalTitle').textContent=biz?.name||'Business';
   document.getElementById('noteText').value=note.text||'';
   document.getElementById('priceInput').value=note.price||'';
   document.getElementById('qtyInput').value=note.qty||'';
@@ -506,8 +528,30 @@ function selectAvail(val){
 }
 function saveNote(){
   const i=STATE.currentBizIndex;
-  STATE.notes[i]={avail:document.getElementById('avail-yes').classList.contains('selected-yes')?'yes':document.getElementById('avail-no').classList.contains('selected-no')?'no':null,text:document.getElementById('noteText').value,price:document.getElementById('priceInput').value,qty:document.getElementById('qtyInput').value};
-  document.getElementById('noteModal').style.display='none'; saveState(); renderResults(STATE.searchQuery);
+  const biz=STATE.results[i];
+  const noteData={
+    avail:document.getElementById('avail-yes').classList.contains('selected-yes')?'yes':document.getElementById('avail-no').classList.contains('selected-no')?'no':null,
+    text:document.getElementById('noteText').value,
+    price:document.getElementById('priceInput').value,
+    qty:document.getElementById('qtyInput').value
+  };
+  STATE.notes[i]=noteData;
+  if(biz) STATE.notesByName[biz.name]=noteData;
+  document.getElementById('noteModal').style.display='none';
+  saveState();
+  if(biz) saveNoteToSupabase(biz.name, noteData);
+  renderResults(STATE.searchQuery);
+}
+
+async function saveNoteToSupabase(bizName, noteData){
+  const { data: { session } } = await sb.auth.getSession();
+  if(!session) return;
+  try {
+    await sb.from('businesses')
+      .update({ note: noteData.text||null, availability: noteData.avail||null, note_price: noteData.price||null })
+      .eq('user_id', session.user.id)
+      .eq('name', bizName);
+  } catch(e){ console.error('saveNoteToSupabase error:', e); }
 }
 
 function openListModal(i){
@@ -564,6 +608,11 @@ function confirmAddToList(){
   document.getElementById('listModal').style.display='none'; saveState(); renderResults(STATE.searchQuery);
 }
 
+function toggleListCollapse(name){
+  STATE.collapsedLists[name]=!STATE.collapsedLists[name];
+  renderLists();
+}
+
 function renderLists(){
   const area=document.getElementById('listsArea');
   const count=Object.keys(STATE.lists).length;
@@ -581,19 +630,24 @@ function renderLists(){
     html+=`<div class="premium-banner"><div class="premium-icon">⭐</div><div class="premium-text"><div class="premium-title">Go Premium</div><div class="premium-sub">Unlimited lists, share & export</div></div><button class="upgrade-btn" onclick="switchTab('profile')">Upgrade</button></div>`;
   }
 
-  if(!Object.values(STATE.lists).some(l=>l.length>0)&&count===0){
+  if(count===0){
     html+=`<div class="empty"><div class="empty-icon">📋</div><div class="empty-title">No lists yet</div><div class="empty-sub">Search, hit Call, and businesses appear here automatically.</div></div>`;
   } else {
     Object.entries(STATE.lists).forEach(([name,items])=>{
+      // Filter out businesses with null/empty names
+      const validItems=items.filter(b=>b.name&&b.name.trim());
+      const collapsed=!!STATE.collapsedLists[name];
       html+=`<div class="list-card">
-        <div class="list-card-name">
+        <div class="list-card-name" onclick="toggleListCollapse('${escHtml(name)}')" style="cursor:pointer;">
+          <span style="font-size:11px;color:var(--muted);margin-right:4px;display:inline-block;transform:rotate(${collapsed?'-90deg':'0deg'});transition:transform 0.2s;">▾</span>
           📋 ${escHtml(name)}
-          <span style="font-size:11px;color:var(--muted);font-weight:400;">${items.length} business${items.length!==1?'es':''}</span>
-          <div style="margin-left:auto;display:flex;gap:4px;">
+          <span style="font-size:11px;color:var(--muted);font-weight:400;">${validItems.length} business${validItems.length!==1?'es':''}</span>
+          <div style="margin-left:auto;display:flex;gap:4px;" onclick="event.stopPropagation()">
             <button onclick="renameList('${escHtml(name)}')" style="background:var(--surface3);border:none;border-radius:6px;padding:4px 8px;color:var(--muted);font-size:11px;cursor:pointer;">✏️ Rename</button>
             <button onclick="deleteList('${escHtml(name)}')" style="background:rgba(239,68,68,0.1);border:none;border-radius:6px;padding:4px 8px;color:var(--red);font-size:11px;cursor:pointer;">🗑️</button>
           </div>
         </div>
+        ${!collapsed?`
         <div style="display:flex;gap:4px;margin-top:8px;">
           <button class="share-btn" onclick="shareList('${escHtml(name)}')">
             <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg>Share
@@ -602,14 +656,16 @@ function renderLists(){
             <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>Export
           </button>
         </div>
-        ${items.length>0?`<div class="list-items">${items.map(b=>`
+        ${validItems.length>0?`<div class="list-items">${validItems.map(b=>`
           <div class="list-item">
             <div>
               <div class="list-item-name">${escHtml(b.name)}</div>
               <div class="list-item-meta">${escHtml(b.phone||'')}${b.phone&&b.category?' · ':''}${escHtml(b.category||'')}</div>
+              ${STATE.notesByName[b.name]?.text?`<div style="font-size:11px;color:var(--muted);margin-top:2px;">📝 ${escHtml(STATE.notesByName[b.name].text)}</div>`:''}
             </div>
-            <span class="called-badge">✓ Called</span>
+            ${b.called?`<span class="called-badge">✓ Called</span>`:''}
           </div>`).join('')}</div>`:''}
+        `:''}
       </div>`;
     });
   }
@@ -617,14 +673,14 @@ function renderLists(){
 }
 
 function shareList(name){
-  const items=STATE.lists[name]||[];
+  const items=(STATE.lists[name]||[]).filter(b=>b.name&&b.name.trim());
   const text=`My "${name}" list from Calldid:\n\n${items.map((b,i)=>`${i+1}. ${b.name} — ${b.phone||'N/A'}`).join('\n')}\n\nGet Calldid at calldid.app`;
   if(navigator.share) navigator.share({title:`Calldid: ${name}`,text});
   else navigator.clipboard.writeText(text).then(()=>alert('Copied to clipboard!'));
 }
 
 function exportList(name){
-  const items=STATE.lists[name]||[];
+  const items=(STATE.lists[name]||[]).filter(b=>b.name&&b.name.trim());
   let txt=`Calldid List: ${name}\nGenerated ${new Date().toLocaleDateString()}\nGet Calldid at calldid.app\n\n`;
   items.forEach((b,i)=>txt+=`${i+1}. ${b.name}\n   📞 ${b.phone||'N/A'}\n   📧 ${b.email||'N/A'}\n   📍 ${b.address||'N/A'}\n\n`);
   const a=document.createElement('a'); a.href=URL.createObjectURL(new Blob([txt],{type:'text/plain'})); a.download=`calldid-${name.toLowerCase().replace(/\s+/g,'-')}.txt`; a.click();
@@ -706,13 +762,14 @@ async function upgradePremium(){
 
 async function clearData(){
   if(!confirm('Clear all your calls, notes, and lists? This cannot be undone.')) return;
-  STATE.called={}; STATE.notes={}; STATE.inLists={}; STATE.lists={'My Searches':[],'Favorites':[]};
+  STATE.called={}; STATE.notes={}; STATE.notesByName={}; STATE.inLists={}; STATE.lists={'My Searches':[],'Favorites':[]}; STATE.searchHistory=[];
   localStorage.removeItem('calldid_state');
   // Clear from Supabase too
   const { data: { session } } = await sb.auth.getSession();
   if(session){
     await sb.from('businesses').delete().eq('user_id',session.user.id);
     await sb.from('lists').delete().eq('user_id',session.user.id);
+    await sb.from('app_settings').delete().eq('key',`search_history_${session.user.id}`);
   }
   renderProfile(); alert('Data cleared.');
 }
@@ -731,27 +788,26 @@ const SB_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJ
 const sb = supabase.createClient(SB_URL, SB_KEY);
 
 async function saveState(){
-  console.log('saveState called, lists:', Object.keys(STATE.lists));
   // Always save locally first (fast)
-  try { localStorage.setItem('calldid_state',JSON.stringify({called:STATE.called,notes:STATE.notes,lists:STATE.lists,inLists:STATE.inLists})); } catch(e){}
+  try { localStorage.setItem('calldid_state',JSON.stringify({called:STATE.called,notes:STATE.notes,notesByName:STATE.notesByName,lists:STATE.lists,inLists:STATE.inLists,searchHistory:STATE.searchHistory})); } catch(e){}
   // Then sync to Supabase in background
   const { data: { session } } = await sb.auth.getSession();
-  console.log('Session user:', session?.user?.id);
-  if(!session) { console.log('No session — skipping Supabase save'); return; }
+  if(!session) return;
   const uid=session.user.id;
-  // Upsert all lists and their businesses
+  // Upsert all lists including empty ones
   for(const [listName, businesses] of Object.entries(STATE.lists)){
-    if(!businesses.length) continue;
-    // Upsert list
     const { data: listData } = await sb.from('lists').upsert({user_id:uid,name:listName},{onConflict:'user_id,name'}).select().single();
     if(!listData) continue;
-    // Upsert businesses in that list
+    // Upsert businesses, skipping null/empty names
     for(const biz of businesses){
+      if(!biz.name||!biz.name.trim()) continue;
+      const note=STATE.notesByName[biz.name]||{};
       await sb.from('businesses').upsert({
         user_id:uid, list_id:listData.id,
         name:biz.name, category:biz.category, phone:biz.phone,
-        email:biz.email, address:biz.address, rating:String(biz.rating),
-        hours:biz.hours, price:biz.price, called:!!biz.called
+        email:biz.email, address:biz.address, rating:String(biz.rating||''),
+        hours:biz.hours, price:biz.price, called:!!biz.called,
+        note:note.text||null, availability:note.avail||null, note_price:note.price||null
       },{onConflict:'user_id,name,list_id'});
     }
   }
@@ -760,21 +816,36 @@ async function saveState(){
 async function loadState(){
   // Load from localStorage immediately for fast start
   try { const s=localStorage.getItem('calldid_state'); if(s) Object.assign(STATE,JSON.parse(s)); } catch(e){}
-  // Then sync from Supabase in background
+  // Then sync from Supabase
   const { data: { session } } = await sb.auth.getSession();
   if(!session) return;
   const uid=session.user.id;
+  // Load search history from app_settings
+  try {
+    const { data: histData } = await sb.from('app_settings').select('value').eq('key',`search_history_${uid}`).single();
+    if(histData?.value) STATE.searchHistory=JSON.parse(histData.value);
+  } catch(e){}
+  // Load lists and businesses from Supabase
   const { data: lists } = await sb.from('lists').select('*, businesses(*)').eq('user_id',uid);
-  if(!lists||!lists.length) return;
-  lists.forEach(list=>{
-    STATE.lists[list.name]=list.businesses.map(b=>({
-      name:b.name, category:b.category, phone:b.phone,
-      email:b.email, address:b.address, rating:b.rating,
-      hours:b.hours, price:b.price, called:b.called
-    }));
-  });
+  if(lists&&lists.length){
+    lists.forEach(list=>{
+      // Filter out null/empty business names
+      const validBiz=(list.businesses||[]).filter(b=>b.name&&b.name.trim());
+      STATE.lists[list.name]=validBiz.map(b=>({
+        name:b.name, category:b.category, phone:b.phone,
+        email:b.email, address:b.address, rating:b.rating,
+        hours:b.hours, price:b.price, called:b.called
+      }));
+      // Restore notes from Supabase business records
+      validBiz.forEach(b=>{
+        if(b.note||b.availability||b.note_price){
+          STATE.notesByName[b.name]={text:b.note||'',avail:b.availability||null,price:b.note_price||''};
+        }
+      });
+    });
+  }
   // Update local cache
-  try { localStorage.setItem('calldid_state',JSON.stringify({called:STATE.called,notes:STATE.notes,lists:STATE.lists,inLists:STATE.inLists})); } catch(e){}
+  try { localStorage.setItem('calldid_state',JSON.stringify({called:STATE.called,notes:STATE.notes,notesByName:STATE.notesByName,lists:STATE.lists,inLists:STATE.inLists,searchHistory:STATE.searchHistory})); } catch(e){}
   // Re-render if on lists tab
   if(STATE.activeTab==='lists') renderLists();
 }
