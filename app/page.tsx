@@ -1,7 +1,6 @@
 'use client'
 
 import { useState, useEffect, useRef, useCallback } from 'react'
-import { useRouter } from 'next/navigation'
 import { getSupabase } from '@/lib/supabase'
 
 interface Note { avail: 'yes' | 'no' | null; text: string; price: string; qty: string }
@@ -25,7 +24,6 @@ function getEmoji(q: string) { const lq = (q || '').toLowerCase(); for (const k 
 function esc(s: string | null | undefined) { return String(s || '') }
 
 export default function HomePage() {
-  const router = useRouter()
   const sb = getSupabase()
 
   const [user, setUser] = useState<UserData | null>(null)
@@ -96,7 +94,7 @@ export default function HomePage() {
 
     ;(async () => {
       const { data: { session } } = await sb.auth.getSession()
-      if (!session) { router.replace('/auth'); return }
+      if (!session) { window.location.replace('/auth'); return }
       let u: UserData | null = null
       try {
         const { data: profile } = await sb.from('profiles').select('*').eq('id', session.user.id).single()
@@ -108,7 +106,7 @@ export default function HomePage() {
         const raw = localStorage.getItem('calldid_user')
         if (raw) u = JSON.parse(raw)
       }
-      if (!u?.email) { router.replace('/auth'); return }
+      if (!u?.email) { window.location.replace('/auth'); return }
       setUser(u)
       setLocation(u.location)
       await loadState(session.user.id, u)
@@ -453,7 +451,7 @@ export default function HomePage() {
     await sb.auth.signOut()
     localStorage.removeItem('calldid_user')
     localStorage.removeItem('calldid_state')
-    router.replace('/auth')
+    window.location.replace('/auth')
   }
 
   // ── Share / Export ─────────────────────────────────────────────────

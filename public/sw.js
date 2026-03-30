@@ -1,8 +1,7 @@
-const CACHE_NAME = 'calldid-v1';
+const CACHE_NAME = 'calldid-v2';
 const STATIC_ASSETS = [
-  '/index.html',
   '/manifest.json',
-  'https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=DM+Mono:wght@400;500&display=swap'
+  '/icon.svg'
 ];
 
 self.addEventListener('install', event => {
@@ -26,29 +25,46 @@ self.addEventListener('activate', event => {
 self.addEventListener('fetch', event => {
   const url = new URL(event.request.url);
 
-  // Let Anthropic API calls go through — never cache them
-  if (url.hostname === 'api.anthropic.com') {
-    return event.respondWith(fetch(event.request));
+  // Never intercept non-GET, API calls, Next.js internals, or auth endpoints
+  if (
+    event.request.method !== 'GET' ||
+    url.pathname.startsWith('/_next/') ||
+    url.pathname.startsWith('/api/') ||
+    url.hostname.includes('supabase.co') ||
+    url.hostname.includes('anthropic.com') ||
+    url.hostname.includes('workers.dev')
+  ) {
+    return;
   }
 
-  // Cache-first for static assets, network-first for everything else
-  if (event.request.method === 'GET') {
+  // Cache-first for known static assets (manifest, icon)
+  if (STATIC_ASSETS.includes(url.pathname)) {
     event.respondWith(
       caches.match(event.request).then(cached => {
         if (cached) return cached;
         return fetch(event.request).then(response => {
-          if (response && response.status === 200 && response.type !== 'opaque') {
+          if (response && response.status === 200) {
             const clone = response.clone();
             caches.open(CACHE_NAME).then(cache => cache.put(event.request, clone));
           }
           return response;
-        }).catch(() => cached || new Response('Offline', { status: 503 }));
+        }).catch(() => cached);
       })
     );
+    return;
+  }
+
+  // Network-first for all page navigations (Next.js routes)
+  if (event.request.mode === 'navigate') {
+    event.respondWith(
+      fetch(event.request).catch(() => {
+        return caches.match('/') || new Response('Offline', { status: 503 });
+      })
+    );
+    return;
   }
 });
 
-// Background sync for saved lists (future feature)
 self.addEventListener('sync', event => {
   if (event.tag === 'sync-lists') {
     console.log('Syncing lists in background...');
